@@ -10,10 +10,14 @@
   "author": "Adrian Kosiński, Filip Philavong",
   "license": "MIT",
   "dependencies": {
-    "react": "^15.4.2",
-    "react-dom": "^15.4.2",
+    "node-static": "^0.7.9",
+    "prop-types": "^15.5.8",
+    "react": "^15.+",
+    "react-dom": "^15.5.0",
     "react-router": "^4.0.0",
     "react-router-dom": "^4.0.0",
+    "socket.io": "^1.7.3",
+    "socket.io-client": "^1.7.3",
     "webrtc-adapter": "^3.3.3"
   },
   "devDependencies": {
@@ -36,6 +40,7 @@
     "gulp-if": "^2.0.1",
     "gulp-image": "^2.4.1",
     "gulp-sourcemaps": "^1.6.0",
+    "gulp-string-replace": "^0.4.0",
     "gulp-uglify": "^2.0.0",
     "gulp-util": "^3.0.7",
     "htmlmin": "0.0.6",
@@ -44,6 +49,7 @@
     "restify": "^4.3.0",
     "system-sleep": "^1.3.0",
     "uglify": "^0.1.5",
+    "uuid": "^3.0.1",
     "vinyl-buffer": "^1.0.0",
     "vinyl-source-stream": "^1.1.0"
   }

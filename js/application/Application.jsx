@@ -1,9 +1,9 @@
 import React from 'react';
-import {HashRouter as Router, Route, Switch} from 'react-router-dom';
+import { HashRouter as Router, Route, Switch } from 'react-router-dom';
 
 import RestClient from "./RestClient";
 import ApplicationView from "./ApplicationView";
-import Consultation from "../consultation/Consultation";
+import Consultations from "../consultation/Consultations";
 
 export default class Application extends React.Component {
     static childContextTypes = {
@@ -13,10 +13,7 @@ export default class Application extends React.Component {
     constructor(props) {
         super(props);
         this.restClient = new RestClient();
-
-        this.state = {
-            modelField: ""
-        }
+        console.log("Mounting app");
     }
 
 
@@ -30,13 +27,15 @@ export default class Application extends React.Component {
     render() {
         return (
             <ApplicationView>
+
                 <Router>
                     <div className="root">
                         <Switch>
-                            <Route exact path='/' component={Consultation}/>
+                            <Route exact path='/' component={ Consultations }/>
                         </Switch>
                     </div>
                 </Router>
+
             </ApplicationView>
         );
     }

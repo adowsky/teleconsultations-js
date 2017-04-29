@@ -17,6 +17,13 @@ import restify from "restify";
 import inquirer from "inquirer";
 import clear from "cli-clear";
 import sleep from "system-sleep";
+import os from 'os';
+import nodeStatic  from'node-static';
+import http from 'http';
+import socketIO from 'socket.io';
+import replace from 'gulp-string-replace';
+import uuid from 'uuid/v4';
+import https from 'https';
 
 const basePath = "target/_build/";
 const SOURCE_PATH = "";
@@ -53,6 +60,7 @@ gulp.task('prod', () => {
 let syncInstance = browsersync.create();
 
 gulp.task('build:js', () => {
+    gulp.run("build:html");
     return browserify(options.browserify)
         .transform(babelify)
         .bundle()
@@ -70,14 +78,16 @@ gulp.task("build:css", () => {
         .pipe(cleanCSS({compatibility: 'ie8'}))
         .pipe(concat('all.css'))
         .pipe(gulp.dest(PATHS.cssOutput))
-        .pipe(syncInstance.stream())
 
 });
 
-gulp.task('build:html', () =>
-    gulp.src(PATHS.htmlInput)
-        .pipe(htmlmin({collapseWhitespace: true}))
-        .pipe(gulp.dest(basePath))
+gulp.task('build:html', () => {
+    const version = uuid();
+        return gulp.src(PATHS.htmlInput)
+            .pipe(replace(/\\?v={version}/g, `?v=${version}`))
+            .pipe(htmlmin({ collapseWhitespace: true }))
+            .pipe(gulp.dest(basePath));
+    }
 );
 
 gulp.task('build:images', () => {
@@ -86,104 +96,73 @@ gulp.task('build:images', () => {
         .pipe(gulp.dest(PATHS.imagesOutput));
 });
 
-gulp.task("watch", function () {
-    const proxy = proxyMiddleware("/api", {target: "http://localhost:8080/"});
-    syncInstance.init({
-        server: {
-            port: 3000,
-            host: 'localhost',
-            baseDir: "target/_build",
-            online: true,
-            middleware: [proxy]
+
+gulp.task("socket", () => {
+    const fileServer = new(nodeStatic.Server)("./target/_build/");
+    const app = http.createServer(function(req, res) {
+        fileServer.serve(req, res);
+    });
+
+    const io = socketIO.listen(app);
+    app.listen(8080);
+    io.sockets.on('connection', function(socket) {
+
+        // convenience function to log server messages on the client
+        function log() {
+            const array = ['Message from server:'];
+            array.push.apply(array, arguments);
+            socket.emit('log', array);
+            // console.log(array);
         }
-    });
-    new Promise(() => {
-        gulp.watch(["js/**/*.jsx"], ["js-watch"]);
-        gulp.watch(["css/*.css"], ["build:css"]);
-        gulp.watch(["**/*.html"], ["html-watch"]);
-    });
 
-});
-
-gulp.task("server", () => {
-    const server = restify.createServer({
-        name: "timetable-front",
-        version: "1.0.0"
-    });
-
-    server.use(restify.acceptParser(server.acceptable));
-    server.use(restify.queryParser());
-    server.use(restify.bodyParser({
-        multipartHandler: function (part) {
-            part.on('data', function (data) {
-                /* do something with the multipart data */
-            });
-        },
-        multipartFileHandler: function (part) {
-            part.on('data', function (data) {
-                /* do something with the multipart file data */
-            });
-        },
-        uploadDir: "target/tmp",
-        multiples: true
-    }));
-    server.use(restify.CORS());
-
-    const values = {
-        "delay": [0, 250, 500, 1000, 5000]
-
-    };
-
-    let currentValue = {
-        "delay": 0
-
-    };
-
-    server.listen(8080, () => {
-        console.log("Server mock running on port: 8080");
-    });
-
-
-    const toggle = (key) => {
-        if (currentValue[key] + 1 === values[key].length) {
-            currentValue[key] = 0;
-        } else {
-            currentValue[key] += 1;
-        }
-    };
-
-    const menu = () => {
-        clear();
-        Object.keys(values).forEach((val) => {
-            console.info(`${val}: [${values[val][currentValue[val]]}]`);
+        socket.on('message', function(message) {
+            log('Client said: ', message);
+            // for a real app, would be room-only (not broadcast)
+            socket.broadcast.emit('message', message);
         });
-        let choices = Object.keys(values).concat(new inquirer.Separator(), "exit");
-        inquirer.prompt([
-            {
-                type: "list",
-                name: "api",
-                message: "Change API",
-                choices: choices
-            }
-        ]).then((answers) => {
-            if (answers.api === "exit") {
-                process.exit();
-            } else {
-                toggle(answers.api);
-                menu();
-            }
 
+        socket.on('create or join', function(room) {
+            log('Received request to create or join room ' + room);
+            const numClients = Object.keys(io.sockets.sockets).length;
+            console.log(`Client connections: ${Object.keys(io.sockets.sockets)}`);
+            log('Room ' + room + ' now has ' + numClients + ' client(s)');
+
+            if (numClients === 1) {
+                socket.join(room);
+                log('Client ID ' + socket.id + ' created room ' + room);
+                socket.emit('created', room, socket.id);
+            } else if (numClients <= 5) {
+                console.log("joining");
+                log('Client ID ' + socket.id + ' joined room ' + room);
+                io.sockets.in(room).emit('join', room);
+                socket.join(room);
+                socket.emit('joined', room, socket.id);
+                io.sockets.in(room).emit('ready');
+                // socket.broadcast.emit('ready', room);
+            } else { // max two clients
+                socket.emit('full', room);
+            }
         });
-    };
 
-    menu();
+        socket.on('ipaddr', function() {
+            const ifaces = os.networkInterfaces();
+            for (let dev in ifaces) {
+                ifaces[dev].forEach(function(details) {
+                    if (details.family === 'IPv4' && details.address !== '127.0.0.1') {
+                        socket.emit('ipaddr', details.address);
+                    }
+                });
+            }
+        });
+
+        socket.on('bye', function(){
+            console.log('received bye');
+        });
+
+    });
+    // new Promise(() => {
+    //     gulp.watch(["js/**/*.jsx"], ["build:js"]);
+    //     gulp.watch(["css/*.css"], ["build:css"]);
+    //     gulp.watch(["**/*.html"], ["build:html"]);
+    // });
 });
-
-gulp.task("js-watch", ["build:js"], () => syncInstance.reload());
-gulp.task("html-watch", ["build:html"], () => syncInstance.reload);
-
-gulp.task('build', ['build:css', 'build:html', 'build:js', 'build:images']);
-
-gulp.task('build:prod', ['prod', 'build:css', 'build:html', 'build:js', 'build:images']);
-
-gulp.task('default', ['build:html', 'build:css', 'build:js', 'watch']);
