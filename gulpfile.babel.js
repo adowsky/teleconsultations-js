@@ -96,16 +96,19 @@ gulp.task('build:images', () => {
         .pipe(gulp.dest(PATHS.imagesOutput));
 });
 
-
+const clients = {};
 gulp.task("socket", () => {
     const fileServer = new(nodeStatic.Server)("./target/_build/");
     const app = http.createServer(function(req, res) {
+        res.removeHeader("Cache-Control");
+        res.setHeader("Cache-Control", "no-cache");
         fileServer.serve(req, res);
     });
 
     const io = socketIO.listen(app);
     app.listen(8080);
     io.sockets.on('connection', function(socket) {
+    let nextId = 0;
 
         // convenience function to log server messages on the client
         function log() {
@@ -116,28 +119,42 @@ gulp.task("socket", () => {
         }
 
         socket.on('message', function(message) {
-            log('Client said: ', message);
-            // for a real app, would be room-only (not broadcast)
-            socket.broadcast.emit('message', message);
+            // log('Client said: ', message);
+            // console.log(message);
+            if(message.type === 'bye') {
+                delete clients[message.ownerId];
+            }
+
+            if(message.to) {
+                if(!message.type) {
+                    console.log(message);
+                }
+                io.sockets.connected[clients[message.to]].emit('message', message);
+                console.log(`Routed ${message.type} from ${message.ownerId}(${clients[message.ownerId]}) to  ${message.to}(${clients[message.to]})`)
+            } else {
+                socket.broadcast.emit('message', message);
+            }
         });
 
-        socket.on('create or join', function(room) {
-            log('Received request to create or join room ' + room);
+        socket.on('join', function(room) {
+            log('Received request to create or join room ' + room.room);
+            console.log(room);
             const numClients = Object.keys(io.sockets.sockets).length;
             console.log(`Client connections: ${Object.keys(io.sockets.sockets)}`);
-            log('Room ' + room + ' now has ' + numClients + ' client(s)');
-
+            log('Room ' + room.room + ' now has ' + numClients + ' client(s)');
+            clients[room.ownerId] = socket.id;
+            console.log("New client", clients);
             if (numClients === 1) {
-                socket.join(room);
-                log('Client ID ' + socket.id + ' created room ' + room);
-                socket.emit('created', room, socket.id);
+                socket.join(room.room);
+                log('Client ID ' + socket.id + ' created room ' + room.room);
+                socket.emit('created', room.room, socket.id);
             } else if (numClients <= 5) {
                 console.log("joining");
-                log('Client ID ' + socket.id + ' joined room ' + room);
-                io.sockets.in(room).emit('join', room);
-                socket.join(room);
-                socket.emit('joined', room, socket.id);
-                io.sockets.in(room).emit('ready');
+                log('Client sock ID ' + socket.id + ' joined room ' + room.room);
+                io.sockets.in(room.room).emit('join', room.room);
+                socket.join(room.room);
+                socket.emit('joined', room.room, socket.id);
+                io.sockets.in(room.room).emit('ready', room.id);
                 // socket.broadcast.emit('ready', room);
             } else { // max two clients
                 socket.emit('full', room);
@@ -155,9 +172,6 @@ gulp.task("socket", () => {
             }
         });
 
-        socket.on('bye', function(){
-            console.log('received bye');
-        });
 
     });
     // new Promise(() => {

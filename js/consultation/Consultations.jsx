@@ -1,7 +1,7 @@
 import React from "react";
 
 import Caller from "./Caller";
-import ServerClient from "./ServerClient";
+import SignalingServer from "./SignalingServer";
 
 
 export default class Consultations extends React.Component {
@@ -13,7 +13,8 @@ export default class Consultations extends React.Component {
         };
 
         this.onParticipantJoined = this.onParticipantJoined.bind(this);
-        this.serverClient = new ServerClient(this.onParticipantJoined);
+        this.serverClient = new SignalingServer(this.onParticipantJoined);
+
     }
 
     componentDidMount() {
