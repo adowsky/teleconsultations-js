@@ -1,8 +1,12 @@
 export default class ParticipantConnection {
-    constructor(id, sendMessage, onAdd) {
+    constructor(id, sendMessage, onAdd, handleNewMessage) {
         this.id = id;
         this.sendMessage = sendMessage;
+        this.handleNewMessage = handleNewMessage;
         this.stream = null;
+        this.remoteDataChannel = null;
+        this.dataChannel = null;
+
         try {
             this.pc = new RTCPeerConnection(null);
             const handleIceCandidate = event => {
@@ -32,24 +36,22 @@ export default class ParticipantConnection {
             this.pc.onicecandidate = handleIceCandidate.bind(this);
             this.pc.onaddstream = handleStreamAdd.bind(this);
             this.pc.onremovestream = handleStreamRemove;
+
+            this.dataChannel = this.pc.createDataChannel("textChat", null);
+            this.dataChannel.onopen = this.onDataChannelStateChange;
+            this.dataChannel.onclose = this.onDataChannelStateChange;
+            this.pc.ondatachannel = this.receiveDataChannel;
         } catch (e) {
             console.log('Failed to create PeerConnection, exception: ' + e.message);
             alert('Cannot create RTCPeerConnection object.');
         }
-
-        this.addStream = this.addStream.bind(this);
-        this.setLocalAndSendMessage = this.setLocalAndSendMessage.bind(this);
-        this.call = this.call.bind(this);
-        this.setRemoteDescription = this.setRemoteDescription.bind(this);
-        this.addCandidate = this.addCandidate.bind(this);
-        this.remoteHangup = this.remoteHangup.bind(this);
     }
 
-    addStream(stream) {
+    addStream = (stream) => {
         this.pc.addStream(stream);
-    }
+    };
 
-     setLocalAndSendMessage (sessionDescription) {
+    setLocalAndSendMessage = (sessionDescription) => {
         // Set Opus as the preferred codec in SDP if Opus is present.
         //  sessionDescription.sdp = preferOpus(sessionDescription.sdp);
         //  console.log('setLocalAndSendMessage set desc', sessionDescription);
@@ -58,34 +60,54 @@ export default class ParticipantConnection {
         this.sendMessage(sessionDescription, this.id);
     };
 
-    call() {
+    call = () => {
         console.log('Sending offer to peer');
         // this.pc.createOffer(this.setLocalAndSendMessage, event => console.log('createOffer() error: ', event));
         this.pc.createOffer().then(this.setLocalAndSendMessage);
-    }
+    };
 
-    doAnswer() {
+    doAnswer = () => {
         console.log('Sending answer to peer.');
         this.pc.createAnswer().then(
             this.setLocalAndSendMessage,
             error => console.log('Failed to create session description: ' + error.toString())
         );
-    }
+    };
 
-    setRemoteDescription(desc) {
+    setRemoteDescription = (desc) => {
         this.pc.setRemoteDescription(new RTCSessionDescription(desc));
-    }
+    };
 
-    addCandidate(label, candidate) {
+    onDataChannelStateChange = () => {
+        const readyState = this.dataChannel.readyState;
+        if (readyState === "open") {
+
+        }
+    };
+
+    receiveDataChannel = event => {
+        console.log("Established data channel");
+        this.remoteDataChannel = event.channel;
+        this.remoteDataChannel.onmessage = event => {
+            console.log("Received message:", event.data);
+            this.handleNewMessage(event.data, this.id);
+        }
+    };
+
+    addCandidate = (label, candidate) => {
         const iceCandidate = new RTCIceCandidate({
             sdpMLineIndex: label,
             candidate: candidate
         });
         this.pc.addIceCandidate(iceCandidate);
         console.log("Candidate added");
-    }
+    };
 
-    remoteHangup() {
+    remoteHangup = () => {
         this.pc.close();
-    }
+    };
+
+    sendChatMessage = (message) => {
+        this.dataChannel.send(message);
+    };
 }

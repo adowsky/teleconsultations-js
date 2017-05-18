@@ -6,7 +6,7 @@ import ParticipantConnection from "./ParticipantConnection";
 export default class SignalingServer {
     static LOCAL_STREAM = null;
 
-    constructor(onJoin) {
+    constructor(onJoin, onNewMessage) {
         this.pcConfig = {
             'iceServers': [{
                 'urls': 'stun:stun.l.google.com:19302'
@@ -21,6 +21,7 @@ export default class SignalingServer {
         this.clients = {};
         this.id = uuid();
         this.onJoin = onJoin;
+        this.onNewMessage = onNewMessage;
         this.shouldSendUserMedia = false;
 
         window.onbeforeunload = () => {
@@ -34,8 +35,6 @@ export default class SignalingServer {
 
         this.configureSocket();
         this.initializeLocalStream();
-
-
     }
 
     configureSocket() {
@@ -64,7 +63,7 @@ export default class SignalingServer {
         this.socket.on("message", message => {
             if (message.type === 'got user media') {
                 console.log("got media", message);
-                const client = new ParticipantConnection(message.ownerId, this.sendMessage.bind(this), this.onJoin);
+                const client = new ParticipantConnection(message.ownerId, this.sendMessage.bind(this), this.onJoin, this.onNewMessage);
                 client.addStream(SignalingServer.LOCAL_STREAM);
                 client.call();
                 this.clients[message.ownerId] = (client);
@@ -74,7 +73,7 @@ export default class SignalingServer {
                     return; //todo fix resend to self
                 }
                 if (!this.clients[message.ownerId]) {
-                    const client = new ParticipantConnection(message.ownerId, this.sendMessage.bind(this), this.onJoin);
+                    const client = new ParticipantConnection(message.ownerId, this.sendMessage.bind(this), this.onJoin, this.onNewMessage);
                     client.addStream(SignalingServer.LOCAL_STREAM);
                     this.clients[message.ownerId] = (client);
                 }
@@ -137,4 +136,10 @@ export default class SignalingServer {
         this.socket.emit('message', message);
     }
 
+
+
+    sendChatMessage = (message) => {
+        const keys = Object.keys(this.clients);
+        keys.forEach(key => this.clients[key].sendChatMessage(message));
+    };
 }

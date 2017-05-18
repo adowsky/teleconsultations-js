@@ -108,7 +108,6 @@ gulp.task("socket", () => {
     const io = socketIO.listen(app);
     app.listen(8080);
     io.sockets.on('connection', function(socket) {
-    let nextId = 0;
 
         // convenience function to log server messages on the client
         function log() {
