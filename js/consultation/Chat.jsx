@@ -20,12 +20,14 @@ export default class Chat extends React.Component {
         return (
             <div>
                 <div className="message-box">
-                    { messages.map(message => <div className="message">{message}</div>) }
+                    { messages.map((message, idx )=> <div key={idx} className="message">{message}</div>) }
                 </div>
                 <div className="inputbox">
                     <input ref={ ref =>  this.ref.message = ref } name="message" />
                     <button onClick={ this.send }>Send</button>
                 </div>
+
+
             </div>
         );
     }
