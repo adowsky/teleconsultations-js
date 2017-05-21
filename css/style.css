@@ -1,0 +1,33 @@
+video {
+    max-width:250px;
+}
+
+.camera-container {
+    position: absolute;
+    right: 0;
+    top: 0;
+    max-height: 100vh;
+    overflow-y: scroll;
+    max-width:260px;
+}
+
+.photo-container {
+    width: calc(100vw - 260px);
+    height: 250px;
+    overflow: scroll;
+}
+
+.menu-chat-bar {
+    max-width: 250px;
+    display: inline-block;
+    vertical-align: top;
+}
+
+.photo-viewer {
+    max-width: calc(100vw - 550px);
+    display: inline-block;
+}
+
+.photo-viewer > img {
+    max-width:100%;
+}

@@ -12,7 +12,7 @@ export default class Caller extends React.Component {
     render() {
         return (
             <div>
-                <video autoPlay src={ this.props.stream }/>
+                <video autoPlay src={ this.props.stream.stream }/>
             </div>
         );
     }

@@ -5,6 +5,7 @@ import Chat from "./Chat";
 import Photos from "./Photos";
 import PhotoUploader from "./PhotoUploader";
 import SignalingServer from "./SignalingServer";
+import PhotoViewer from "./PhotoViewer";
 
 
 export default class Consultations extends React.Component {
@@ -14,9 +15,13 @@ export default class Consultations extends React.Component {
         this.state = {
             callers: [],
             messages: [],
-            photos: []
+            photos: [],
+            selectedImageIdx: 0
         };
-        this.serverClient = new SignalingServer(this.onParticipantJoined, {
+        this.serverClient = new SignalingServer({
+            joined: this.onParticipantJoined,
+            disconnect: this.onParticipantDisconnect
+        }, {
             chat: this.onNewMessage,
             photos: this.onNewPhoto
         });
@@ -27,11 +32,20 @@ export default class Consultations extends React.Component {
         console.log("Mounted");
     }
 
-    onParticipantJoined = (participantStream) => {
-        const callers = [].concat(this.state.callers);
-        callers.push(participantStream);
+    onParticipantJoined = (participantStream, participantId) => {
+        const callers = this.state.callers.concat([{
+            stream: participantStream,
+            id: participantId
+        }]);
         console.debug(`Registering new Caller`);
 
+        this.setState({ callers });
+    };
+
+    onParticipantDisconnect = (participantId) => {
+        const idx = this.state.callers.map(caller => caller.id).indexOf(participantId);
+        const callers = [].concat(this.state.callers);
+        callers.splice(idx, 1);
         this.setState({ callers });
     };
 
@@ -46,7 +60,7 @@ export default class Consultations extends React.Component {
             sender: sender
         }]);
 
-        this.setState({photos});
+        this.setState({ photos });
     };
 
     sendChatMessage = message => {
@@ -55,18 +69,27 @@ export default class Consultations extends React.Component {
     };
 
     sendImage = image => {
-      this.onNewPhoto(image, "You");
-      this.serverClient.sendImage(image);
+        this.onNewPhoto(image, "You");
+        this.serverClient.sendImage(image);
+    };
+
+    onImageSelection = imageIndex => {
+        this.setState({selectedImageIdx: imageIndex})
     };
 
     render() {
         let key = 0;
         return (
             <div>
-                { this.state.callers.map(caller => <Caller key={ key++ } stream={ caller }/>) }
-                <Chat messages={ this.state.messages } send={ this.sendChatMessage }/>
-                <Photos photos={ this.state.photos }/>
-                <PhotoUploader sendImage={ this.sendImage }/>
+                <div className="menu-chat-bar">
+                    <Chat messages={ this.state.messages } send={ this.sendChatMessage }/>
+                    <PhotoUploader sendImage={ this.sendImage }/>
+                </div>
+                <PhotoViewer image={ this.state.photos[this.state.selectedImageIdx] } />
+                <Photos photos={ this.state.photos } selectImage={ this.onImageSelection }  />
+                <div className="camera-container">
+                    { this.state.callers.map(caller => <Caller key={ key++ } stream={ caller }/>) }
+                </div>
             </div>
         );
     }

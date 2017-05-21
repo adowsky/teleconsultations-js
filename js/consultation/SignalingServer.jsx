@@ -6,7 +6,7 @@ import ParticipantConnection from "./ParticipantConnection";
 export default class SignalingServer {
     static LOCAL_STREAM = null;
 
-    constructor(onJoin, onNewMessage) {
+    constructor(onParticipant, onNewMessage) {
         this.pcConfig = {
             'iceServers': [{
                 'urls': 'stun:stun.l.google.com:19302'
@@ -14,13 +14,12 @@ export default class SignalingServer {
         };
 
         this.socket = io.connect();
-
         this.room = "foo";
         this.creator = false;
         this.nextId = 0;
         this.clients = {};
         this.id = uuid();
-        this.onJoin = onJoin;
+        this.onParticipant = onParticipant;
         this.onNewMessage = onNewMessage;
         this.shouldSendUserMedia = false;
 
@@ -63,7 +62,7 @@ export default class SignalingServer {
         this.socket.on("message", message => {
             if (message.type === 'got user media') {
                 console.log("got media", message);
-                const client = new ParticipantConnection(message.ownerId, this.sendMessage.bind(this), this.onJoin, this.onNewMessage);
+                const client = new ParticipantConnection(message.ownerId, this.sendMessage.bind(this), this.onParticipant.joined, this.onNewMessage);
                 client.addStream(SignalingServer.LOCAL_STREAM);
                 client.call();
                 this.clients[message.ownerId] = (client);
@@ -73,7 +72,7 @@ export default class SignalingServer {
                     return; //todo fix resend to self
                 }
                 if (!this.clients[message.ownerId]) {
-                    const client = new ParticipantConnection(message.ownerId, this.sendMessage.bind(this), this.onJoin, this.onNewMessage);
+                    const client = new ParticipantConnection(message.ownerId, this.sendMessage.bind(this), this.onParticipant.joined, this.onNewMessage);
                     client.addStream(SignalingServer.LOCAL_STREAM);
                     this.clients[message.ownerId] = (client);
                 }
@@ -91,6 +90,7 @@ export default class SignalingServer {
                 this.clients[message.ownerId].addCandidate(message.label, message.candidate)
             } else if (message.type === "bye") {
                 this.clients[message.ownerId].remoteHangup();
+                this.onParticipant.disconnect(message.ownerId);
             }
         });
     }
