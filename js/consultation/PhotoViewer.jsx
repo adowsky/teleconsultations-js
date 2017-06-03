@@ -38,9 +38,8 @@ export default class PhotoViewer extends React.Component {
     };
 
     onOverlayClick = event => {
-        const { clientX, clientY } = event;
-        const x = event.nativeEvent.layerX;
-        const y = event.nativeEvent.layerY;
+        const x = event.nativeEvent.layerX/ this.state.coords.width;
+        const y = event.nativeEvent.layerY/ this.state.coords.height;
         this.setState({
             comment: {
                 x: x,
@@ -62,8 +61,7 @@ export default class PhotoViewer extends React.Component {
 
     clearNewComment = () => {
         this.setState({
-            comment: null,
-            coords: {}
+            comment: null
         })
     };
 
@@ -84,11 +82,11 @@ export default class PhotoViewer extends React.Component {
             <div className="photo-viewer">
                 <img src={ this.props.image.photo } ref={ this.registerImage }/>
 
-                <span style={ style } onClick={ this.onOverlayClick }/>
+                <span style={ style } className="overlay"  onClick={ this.onOverlayClick }/>
                 <CommentView comments={ this.props.image.comments } />
                 {
                     (this.state.comment) ?
-                        <CommentEditor x={ this.state.comment.x } y={ this.state.comment.y } publish={ this.publish } abort={ this.clearNewComment }/>
+                        <CommentEditor x={ this.state.comment.x } y={ this.state.comment.y} publish={ this.publish } abort={ this.clearNewComment }/>
                         : null
                 }
 

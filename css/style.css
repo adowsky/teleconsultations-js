@@ -34,15 +34,22 @@ video {
 
 }
 
+.overlay {
+    z-index:1;
+}
+
 .comment-editor {
     padding:5px;
     background:rgba(167, 167, 167, .5);
     border-radius:3px;
     text-align:center;
+    z-index:2;
 }
 .comment-editor > * {
     display:block;
 }
+
+
 
 
 .comment > .marker {
@@ -52,6 +59,8 @@ video {
     display: block;
     border-radius: 5px;
     border: 2px solid #666;
+    position:absolute;
+    z-index:2;
 }
 
 .comment > .marker:hover {

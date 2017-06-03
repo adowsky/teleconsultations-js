@@ -18,8 +18,8 @@ export default class CommentEditor extends React.Component {
     render() {
         const style = {
             position: "absolute",
-            left: `${this.props.x}px`,
-            top: `${this.props.y}px`
+            left: `${this.props.x*100}%`,
+            top: `${this.props.y*100}%`
         };
 
         return (

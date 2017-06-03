@@ -26,8 +26,8 @@ export default class CommentView extends React.Component {
     render() {
         const positionStyleOf = (comment) => {
           return {
-              left: `${comment.coordinates.x}px`,
-              top: `${comment.coordinates.y}px`,
+              left: `${comment.coordinates.x*100}%`,
+              top: `${comment.coordinates.y*100}%`,
               position: "absolute",
           }
         };
