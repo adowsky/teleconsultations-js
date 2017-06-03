@@ -26,8 +26,47 @@ video {
 .photo-viewer {
     max-width: calc(100vw - 550px);
     display: inline-block;
+    position:relative;
 }
 
 .photo-viewer > img {
     max-width:100%;
+
+}
+
+.comment-editor {
+    padding:5px;
+    background:rgba(167, 167, 167, .5);
+    border-radius:3px;
+    text-align:center;
+}
+.comment-editor > * {
+    display:block;
+}
+
+
+.comment > .marker {
+    width: 5px;
+    height: 5px;
+    background: #76b965;
+    display: block;
+    border-radius: 5px;
+    border: 2px solid #666;
+}
+
+.comment > .marker:hover {
+    background:#98e985;
+}
+
+
+.comment > .content {
+    opacity: 0.01;
+    background:#e3e3e3;
+    transition: all 0.2s ease-out;
+    padding: 5px;
+    border-radius: 5px;
+}
+
+.comment > .marker.active + .content {
+    opacity:1;
 }

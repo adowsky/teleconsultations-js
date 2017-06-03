@@ -128,7 +128,8 @@ gulp.task("socket", () => {
                 if(!message.type) {
                     console.log(message);
                 }
-                io.sockets.connected[clients[message.to]].emit('message', message);
+                if(io.sockets.connected[clients[message.to]])
+                    io.sockets.connected[clients[message.to]].emit('message', message);
                 console.log(`Routed ${message.type} from ${message.ownerId}(${clients[message.ownerId]}) to  ${message.to}(${clients[message.to]})`)
             } else {
                 socket.broadcast.emit('message', message);

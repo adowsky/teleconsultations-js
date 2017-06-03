@@ -6,6 +6,7 @@ import Photos from "./Photos";
 import PhotoUploader from "./PhotoUploader";
 import SignalingServer from "./SignalingServer";
 import PhotoViewer from "./PhotoViewer";
+import uuid from "uuid/v4"
 
 
 export default class Consultations extends React.Component {
@@ -15,21 +16,21 @@ export default class Consultations extends React.Component {
         this.state = {
             callers: [],
             messages: [],
-            photos: [],
-            selectedImageIdx: 0
+            photos: {},
+            selectedImageIdx: null
         };
         this.serverClient = new SignalingServer({
             joined: this.onParticipantJoined,
             disconnect: this.onParticipantDisconnect
         }, {
             chat: this.onNewMessage,
-            photos: this.onNewPhoto
+            photos: this.onNewPhoto,
+            objects: this.onNewObject
         });
 
     }
 
     componentDidMount() {
-        console.log("Mounted");
     }
 
     onParticipantJoined = (participantStream, participantId) => {
@@ -54,13 +55,40 @@ export default class Consultations extends React.Component {
         this.forceUpdate();
     };
 
-    onNewPhoto = (photo, sender) => {
-        const photos = this.state.photos.concat([{
-            photo: photo,
-            sender: sender
-        }]);
+    onNewPhoto = (photo, id, sender) => {
+        const photos = Object.assign({}, this.state.photos, {
+            [id]: {
+                photo: photo,
+                sender: sender,
+                comments: []
+
+            }
+        });
 
         this.setState({ photos });
+
+        if(!this.state.selectedImageIdx) {
+            this.setState({selectedImageIdx : id});
+        }
+    };
+
+    onNewObject = (object, sender) => {
+        const parsed = JSON.parse(object);
+        switch (parsed.type) {
+            case "comment":
+                const newComments = this.state.photos[parsed.id].comments.concat({
+                    comment: parsed.comment,
+                    coordinates: parsed.coordinates,
+                    sender: sender
+                });
+
+                const updatedPhotos = Object.assign({}, this.state.photos);
+                updatedPhotos[parsed.id].comments = newComments;
+
+                this.setState({ photos: updatedPhotos });
+                console.log("Received new comment ", object);
+                break;
+        }
     };
 
     sendChatMessage = message => {
@@ -69,12 +97,23 @@ export default class Consultations extends React.Component {
     };
 
     sendImage = image => {
-        this.onNewPhoto(image, "You");
-        this.serverClient.sendImage(image);
+        const id =uuid();
+        this.onNewPhoto(image, id );
+        this.serverClient.sendImage(image, id);
     };
 
     onImageSelection = imageIndex => {
         this.setState({selectedImageIdx: imageIndex})
+    };
+
+    sendComment = comment => {
+        const object = Object.assign({}, comment, {
+            type: "comment"
+        });
+
+
+        this.serverClient.sendObject(object);
+        this.onNewObject(JSON.stringify(object), "You");
     };
 
     render() {
@@ -85,7 +124,13 @@ export default class Consultations extends React.Component {
                     <Chat messages={ this.state.messages } send={ this.sendChatMessage }/>
                     <PhotoUploader sendImage={ this.sendImage }/>
                 </div>
-                <PhotoViewer image={ this.state.photos[this.state.selectedImageIdx] } />
+
+                <PhotoViewer
+                    image={ this.state.photos[this.state.selectedImageIdx] }
+                    publishComment={ this.sendComment }
+                    photoId={ this.state.selectedImageIdx }
+                />
+
                 <Photos photos={ this.state.photos } selectImage={ this.onImageSelection }  />
                 <div className="camera-container">
                     { this.state.callers.map(caller => <Caller key={ key++ } stream={ caller }/>) }

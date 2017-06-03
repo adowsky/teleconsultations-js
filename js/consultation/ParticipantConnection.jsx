@@ -14,12 +14,18 @@ export default class ParticipantConnection {
         this.stream = null;
         this.buffer = null;
         this.bufferSize = null;
+        this.imageId = null;
         this.chat = {
             local: null,
             remote: null
         };
 
         this.photos = {
+            local: null,
+            remote: null,
+        };
+
+        this.objects = {
             local: null,
             remote: null,
         };
@@ -62,6 +68,10 @@ export default class ParticipantConnection {
             this.photos.local = this.pc.createDataChannel("photos", null);
             this.photos.local.onopen = this.onDataChannelStateChange;
             this.photos.local.onclose = this.onDataChannelStateChange;
+
+            this.objects.local = this.pc.createDataChannel("objects", null);
+            this.objects.local.onopen = this.onDataChannelStateChange;
+            this.objects.local.onclose = this.onDataChannelStateChange;
         } catch (e) {
             console.log('Failed to create PeerConnection, exception: ' + e.message);
             alert('Cannot create RTCPeerConnection object.');
@@ -110,7 +120,10 @@ export default class ParticipantConnection {
             // console.log("Received message:", event.data);
             if (type === "chat") {
                 this.handleNewMessage[type](event.data, this.id);
-            } else {
+            } else if (type === "objects") {
+                this.handleNewMessage[type](event.data, this.id);
+            }
+            else {
                 if (detectBrowser() === "chrome") {
                     this.receiveDataChromeFactory(event);
                 } else {
@@ -136,6 +149,9 @@ export default class ParticipantConnection {
         this.chat.remote.close();
         this.photos.local.close();
         this.photos.remote.close();
+        this.objects.local.close();
+        this.objects.remote.close();
+
     };
 
     sendChatMessage = (message) => {
@@ -148,18 +164,21 @@ export default class ParticipantConnection {
             const match = regex.exec(event.data);
             const chunks = match[1];
             this.buffer = match[2];
+            this.imageId = null;
             this.bufferSize = parseInt(chunks);
             console.log("Expecting data of size", this.bufferSize);
             // count = 0;
             // console.log('Expecting a total of ' + buf.byteLength + ' bytes');
             return;
         }
-        this.buffer += event.data;
 
         if (this.bufferSize === this.buffer.length) {
-// we're done: all data chunks have been received
+            this.imageId = event.data;
+            // we're done: all data chunks have been received
             console.log('Done. Rendering photo.');
-            this.handleNewMessage.photos(this.buffer, this.id);
+            this.handleNewMessage.photos(this.buffer, this.imageId, this.id);
+        } else {
+            this.buffer += event.data;
         }
     };
 
@@ -201,7 +220,7 @@ export default class ParticipantConnection {
         };
     };
 
-    sendImage = (image) => {
+    sendImage = (image, id) => {
         // Split data channel message in chunks of this byte length.
         const CHUNK_LEN = 64000;
         let img = image,
@@ -224,5 +243,15 @@ export default class ParticipantConnection {
             console.log('last ' + len % CHUNK_LEN + ' byte(s)');
             this.photos.local.send(img.substring(n * CHUNK_LEN));
         }
+        this.photos.local.send(id);
+
+    };
+
+    sendObject = (data) => {
+        if (typeof data === "object") {
+            data = JSON.stringify(data);
+        }
+
+        this.objects.local.send(data);
     }
 }

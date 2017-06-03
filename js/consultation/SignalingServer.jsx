@@ -143,8 +143,13 @@ export default class SignalingServer {
         keys.forEach(key => this.clients[key].sendChatMessage(message));
     };
 
-    sendImage = (data) => {
+    sendImage = (data, id) => {
         const keys = Object.keys(this.clients);
-        keys.forEach(key => this.clients[key].sendImage(data));
-    }
+        keys.forEach(key => this.clients[key].sendImage(data, id));
+    };
+
+    sendObject = (data) => {
+        const keys = Object.keys(this.clients);
+        keys.forEach(key => this.clients[key].sendObject(data));
+    };
 }
