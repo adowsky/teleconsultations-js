@@ -18,7 +18,8 @@ export default class Chat extends React.Component {
     render() {
         const messages = this.props.messages || [];
         return (
-            <div>
+            <div className="chat">
+                <h3>Chat</h3>
                 <div className="message-box">
                     { messages.map((message, idx )=> <div key={idx} className="message">{message}</div>) }
                 </div>

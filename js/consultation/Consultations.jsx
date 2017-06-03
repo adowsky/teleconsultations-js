@@ -133,6 +133,7 @@ export default class Consultations extends React.Component {
 
                 <Photos photos={ this.state.photos } selectImage={ this.onImageSelection }  />
                 <div className="camera-container">
+                    <h3>Participants</h3>
                     { this.state.callers.map(caller => <Caller key={ key++ } stream={ caller }/>) }
                 </div>
             </div>

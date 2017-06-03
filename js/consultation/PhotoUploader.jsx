@@ -29,8 +29,9 @@ export default class PhotoUploader extends React.Component {
 
     render() {
         return (
-            <div>
-                <input type='file' accept='image/*' ref={ ref => this.ref.file = ref }/>
+            <div className="uploader">
+                <h3>Upload Photo</h3>
+                <input type='file' accept='image/*' ref={ ref => this.ref.file = ref }  />
                 <button onClick={ this.upload }>Upload</button>
             </div>
         );

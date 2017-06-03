@@ -5,8 +5,9 @@ export default class Photos extends React.Component {
         const photoKeys = Object.keys(this.props.photos);
         return (
           <div className="photo-container">
-              { photoKeys.map((key, idx) => <img key={ idx } width="300" height="300" src={ this.props.photos[key].photo }
-                                                           onClick={ () => this.props.selectImage(key) } />) } }
+              <h3 className="title">Photos</h3>
+              { photoKeys.map((key, idx) => <img key={ idx } src={ this.props.photos[key].photo }
+                                                           onClick={ () => this.props.selectImage(key) } />) }
           </div>
         );
     }

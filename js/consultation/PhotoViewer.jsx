@@ -17,29 +17,54 @@ export default class PhotoViewer extends React.Component {
 
         };
 
+        this.lastWindowWidth = window.innerWidth;
+        this.lastWindowHeight = window.innerHeight;
+        this.resizeTimeout = null;
+
+
+        this.onResize = () => {
+            // clear the timeout
+            if(this.resizeTimeout)
+                clearTimeout(this.resizeTimeout);
+            // start timing for event "completion"
+            this.resizeTimeout = setTimeout(this.saveCoordinates, 250);
+        }
+
 
     };
+
+    saveCoordinates = () => {
+        if(this.ref.img) {
+            this.setState({
+                coords: {
+                    width: this.ref.img.clientWidth,
+                    height: this.ref.img.clientHeight
+                }
+            });
+        }
+    };
+
+    componentDidMount() {
+        window.addEventListener('resize', this.onResize, false);
+    }
+
+    componentWillUnmount() {
+        window.removeEventListener("resize", this.onResize, false);
+    }
 
     registerImage = ref => {
         this.ref.img = ref;
 
         if (ref) {
-            ref.onload = () => {
-                this.setState({
-                    coords: {
-                        width: ref.clientWidth,
-                        height: ref.clientHeight
-                    }
-                });
-            }
+            ref.onload = this.saveCoordinates;
         } else {
             this.setState({ coords: {} });
         }
     };
 
     onOverlayClick = event => {
-        const x = event.nativeEvent.layerX/ this.state.coords.width;
-        const y = event.nativeEvent.layerY/ this.state.coords.height;
+        const x = event.nativeEvent.layerX / this.state.coords.width;
+        const y = event.nativeEvent.layerY / this.state.coords.height;
         this.setState({
             comment: {
                 x: x,
@@ -67,7 +92,7 @@ export default class PhotoViewer extends React.Component {
 
     render() {
         if (!this.props.image)
-            return null;
+            return <div className="photo-viewer"/>;
 
         const overlayX = this.state.coords.width || 0;
         const overlayY = this.state.coords.height || 0;
