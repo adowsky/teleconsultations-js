@@ -137,12 +137,14 @@ h3.title {
     max-width: calc(100vw - 550px);
     min-height: calc(100vh - 360px);
     display: inline-block;
-    position:relative;
     margin: 8px;
 }
 
 .photo-viewer img {
     max-width:100%;
+}
+.photo-viewer > div {
+    position:relative;
 }
 
 .overlay {

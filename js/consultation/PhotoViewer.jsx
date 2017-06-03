@@ -105,6 +105,7 @@ export default class PhotoViewer extends React.Component {
 
         return (
             <div className="photo-viewer">
+                <div>
                 <img src={ this.props.image.photo } ref={ this.registerImage }/>
 
                 <span style={ style } className="overlay"  onClick={ this.onOverlayClick }/>
@@ -114,7 +115,7 @@ export default class PhotoViewer extends React.Component {
                         <CommentEditor x={ this.state.comment.x } y={ this.state.comment.y} publish={ this.publish } abort={ this.clearNewComment }/>
                         : null
                 }
-
+                </div>
             </div>
         );
     }
