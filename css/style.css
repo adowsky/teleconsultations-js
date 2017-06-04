@@ -207,6 +207,10 @@ h3.title {
     border-radius: 5px;
 }
 
+.comment > .content > * {
+    margin: 2px;
+}
+
 .comment > .marker.active + .content {
     opacity:1;
 }

@@ -43,7 +43,7 @@ export default class CommentView extends React.Component {
                         <span className={ `marker ${markerActivationStyle(idx)}` } onClick={ () => this.onMarkerClick(idx) }/>
                         <div className="content">
                             <p>{comment.comment}</p>
-                            <h3>{`written by ${comment.sender}`}</h3>
+                            <h4>{`written by ${comment.sender}`}</h4>
                         </div>
                 </div>)}
             </div>

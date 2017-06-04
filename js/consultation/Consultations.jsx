@@ -102,10 +102,10 @@ export default class Consultations extends React.Component {
     onNewObject = (object, sender) => {
         switch (object.type) {
             case "comment":
-                const newComments = this.state.photos[parobjectsed.id].comments.concat({
+                const newComments = this.state.photos[object.id].comments.concat({
                     comment: object.comment,
                     coordinates: object.coordinates,
-                    sender: sender
+                    sender: (this.state.callers[sender]) ? this.state.callers[sender].displayName : sender
                 });
 
                 const updatedPhotos = Object.assign({}, this.state.photos);
@@ -144,7 +144,7 @@ export default class Consultations extends React.Component {
 
 
         this.serverClient.sendObject(object);
-        this.onNewObject(JSON.stringify(object), "You");
+        this.onNewObject(object, "You");
     };
 
     render() {
