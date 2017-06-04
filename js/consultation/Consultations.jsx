@@ -10,23 +10,35 @@ import uuid from "uuid/v4"
 
 
 export default class Consultations extends React.Component {
-    constructor(props) {
-        super(props);
+    static contextTypes = {
+        username: React.PropTypes.string
+    };
+
+    constructor(...props) {
+        super(...props);
+        this.serverClient = new SignalingServer({
+                joined: this.onParticipantJoined,
+                disconnect: this.onParticipantDisconnect
+            }, {
+                chat: this.onNewMessage,
+                photos: this.onNewPhoto,
+                objects: this.onNewObject
+            },
+            this.context.username);
+
 
         this.state = {
-            callers: [],
+            callers: {},
             messages: [],
+            markers: {},
             photos: {},
-            selectedImageIdx: null
+            selectedImageIdx: null,
+            serverClient: this.serverClient
         };
-        this.serverClient = new SignalingServer({
-            joined: this.onParticipantJoined,
-            disconnect: this.onParticipantDisconnect
-        }, {
-            chat: this.onNewMessage,
-            photos: this.onNewPhoto,
-            objects: this.onNewObject
-        });
+
+
+
+        this.availableMarkers = ["marker-1","marker-2", "marker-3", "marker-4", "marker-5", "marker-6", "marker-7"];
 
     }
 
@@ -34,11 +46,20 @@ export default class Consultations extends React.Component {
     }
 
     onParticipantJoined = (participantStream, participantId) => {
-        const callers = this.state.callers.concat([{
-            stream: participantStream,
-            id: participantId
-        }]);
-        console.debug(`Registering new Caller`);
+        const callers = Object.assign({}, this.state.callers, {
+            [participantId]: {
+                stream: participantStream,
+                marker: this.availableMarkers.pop()
+            }
+        });
+        //     this.state.callers.concat([{
+        //     stream: participantStream,
+        //     id: participantId
+        // }]);
+        console.debug(`Registering new Caller: ${participantId}`);
+        // const markers = Object.assign({}, this.state.markers, {
+        //     [participantId]: this.availableMarkers.pop()
+        // });
 
         this.setState({ callers });
     };
@@ -46,12 +67,19 @@ export default class Consultations extends React.Component {
     onParticipantDisconnect = (participantId) => {
         const idx = this.state.callers.map(caller => caller.id).indexOf(participantId);
         const callers = [].concat(this.state.callers);
+        this.availableMarkers.push(callers[idx].marker);
         callers.splice(idx, 1);
+
         this.setState({ callers });
     };
 
-    onNewMessage = (message, sender) => {
-        this.state.messages.push(`[${sender}]: ${message}`);
+    onNewMessage = (message, sender, displayName) => {
+        this.state.messages.push({
+                data: message,
+                sender: displayName || this.state.callers[sender].displayName,
+                marker: (sender) ? this.state.callers[sender].marker : ""
+            }
+        );
         this.forceUpdate();
     };
 
@@ -61,49 +89,52 @@ export default class Consultations extends React.Component {
                 photo: photo,
                 sender: sender,
                 comments: []
-
             }
         });
 
         this.setState({ photos });
 
-        if(!this.state.selectedImageIdx) {
-            this.setState({selectedImageIdx : id});
+        if (!this.state.selectedImageIdx) {
+            this.setState({ selectedImageIdx: id });
         }
     };
 
     onNewObject = (object, sender) => {
-        const parsed = JSON.parse(object);
-        switch (parsed.type) {
+        switch (object.type) {
             case "comment":
-                const newComments = this.state.photos[parsed.id].comments.concat({
-                    comment: parsed.comment,
-                    coordinates: parsed.coordinates,
+                const newComments = this.state.photos[parobjectsed.id].comments.concat({
+                    comment: object.comment,
+                    coordinates: object.coordinates,
                     sender: sender
                 });
 
                 const updatedPhotos = Object.assign({}, this.state.photos);
-                updatedPhotos[parsed.id].comments = newComments;
+                updatedPhotos[object.id].comments = newComments;
 
                 this.setState({ photos: updatedPhotos });
                 console.log("Received new comment ", object);
+                break;
+            case "hello":
+                const callers = Object.assign({}, this.state.callers);
+                callers[sender].displayName = object.username;
+                this.setState({ callers });
                 break;
         }
     };
 
     sendChatMessage = message => {
-        this.onNewMessage(message, "You");
+        this.onNewMessage(message, null, "You");
         this.serverClient.sendChatMessage(message);
     };
 
     sendImage = image => {
-        const id =uuid();
-        this.onNewPhoto(image, id );
+        const id = uuid();
+        this.onNewPhoto(image, id);
         this.serverClient.sendImage(image, id);
     };
 
     onImageSelection = imageIndex => {
-        this.setState({selectedImageIdx: imageIndex})
+        this.setState({ selectedImageIdx: imageIndex })
     };
 
     sendComment = comment => {
@@ -117,7 +148,7 @@ export default class Consultations extends React.Component {
     };
 
     render() {
-        let key = 0;
+        const callerIds = Object.keys(this.state.callers);
         return (
             <div>
                 <div className="menu-chat-bar">
@@ -131,10 +162,10 @@ export default class Consultations extends React.Component {
                     photoId={ this.state.selectedImageIdx }
                 />
 
-                <Photos photos={ this.state.photos } selectImage={ this.onImageSelection }  />
+                <Photos photos={ this.state.photos } selectImage={ this.onImageSelection }/>
                 <div className="camera-container">
                     <h3>Participants</h3>
-                    { this.state.callers.map(caller => <Caller key={ key++ } stream={ caller }/>) }
+                    { callerIds.map((id, idx) => <Caller key={ idx } stream={ this.state.callers[id] }/>) }
                 </div>
             </div>
         );

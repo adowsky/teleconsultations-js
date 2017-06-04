@@ -7,7 +7,13 @@ const detectBrowser = () => {
 };
 
 export default class ParticipantConnection {
-    constructor(id, sendMessage, onAdd, handleNewMessage) {
+    constructor(id, sendMessage, onAdd, handleNewMessage, username) {
+        this.username = username;
+        this.establishment = {
+            ack:false,
+            rcv: false
+        };
+
         this.id = id;
         this.sendMessage = sendMessage;
         this.handleNewMessage = handleNewMessage;
@@ -15,20 +21,27 @@ export default class ParticipantConnection {
         this.buffer = null;
         this.bufferSize = null;
         this.imageId = null;
+
+
         this.chat = {
             local: null,
-            remote: null
+            remote: null,
+            established: false
         };
 
         this.photos = {
             local: null,
             remote: null,
+            established: false
         };
 
         this.objects = {
             local: null,
             remote: null,
+            established: false
         };
+
+        this.channels = ["chat", "photos", "objects"];
 
         try {
             this.pc = new RTCPeerConnection(null);
@@ -49,7 +62,8 @@ export default class ParticipantConnection {
 
             const handleStreamAdd = event => {
                 console.log('Remote stream added.');
-                onAdd(window.URL.createObjectURL(event.stream));
+                onAdd(window.URL.createObjectURL(event.stream), this.id);
+                this.stream = event.stream;
             };
 
             const handleStreamRemove = event => {
@@ -59,24 +73,48 @@ export default class ParticipantConnection {
             this.pc.onicecandidate = handleIceCandidate.bind(this);
             this.pc.onaddstream = handleStreamAdd.bind(this);
             this.pc.onremovestream = handleStreamRemove;
+            this.pc.ondatachannel = this.receiveDataChannel;
+
 
             this.chat.local = this.pc.createDataChannel("chat", null);
             this.chat.local.onopen = this.onDataChannelStateChange;
             this.chat.local.onclose = this.onDataChannelStateChange;
-            this.pc.ondatachannel = this.receiveDataChannel;
+
 
             this.photos.local = this.pc.createDataChannel("photos", null);
             this.photos.local.onopen = this.onDataChannelStateChange;
             this.photos.local.onclose = this.onDataChannelStateChange;
+            this.photos.local.onerror = () => console.warn("Problem with photo channel");
 
             this.objects.local = this.pc.createDataChannel("objects", null);
-            this.objects.local.onopen = this.onDataChannelStateChange;
+            this.objects.local.onerror = () => console.warn("Problem with objects channel");
+
             this.objects.local.onclose = this.onDataChannelStateChange;
+
+            const sendHello = () => {
+                if (!this.establishment.ack && this.objects.local.readyState === "open") {
+                    this.sendObject({
+                        username: username,
+                        type: "handshake"
+                    });
+                }
+
+                if (!this.isEstablished()) {
+                    setTimeout(sendHello, 250);
+                }
+            };
+            sendHello();
+
         } catch (e) {
             console.log('Failed to create PeerConnection, exception: ' + e.message);
             alert('Cannot create RTCPeerConnection object.');
         }
     }
+
+    isEstablished = () => {
+        return Object.keys(this.establishment).reduce((total, element) => total && this.establishment[element]);
+
+    };
 
     addStream = (stream) => {
         this.pc.addStream(stream);
@@ -113,15 +151,38 @@ export default class ParticipantConnection {
     };
 
     receiveDataChannel = event => {
+        const handleHandshake = object => {
+            if (object.method === "ack") {
+                this.establishment.ack = true;
+            } else {
+                this.sendObject({ type: "handshake", method: "ack" });
+
+                if (!this.establishment.rcv) {
+                    object.type = "hello";
+                    this.establishment.rcv = true;
+                }
+            }
+        };
+
         console.log("Established data channel");
         const type = event.channel.label;
         this[event.channel.label].remote = event.channel;
+
         this[event.channel.label].remote.onmessage = event => {
             // console.log("Received message:", event.data);
             if (type === "chat") {
                 this.handleNewMessage[type](event.data, this.id);
             } else if (type === "objects") {
-                this.handleNewMessage[type](event.data, this.id);
+                console.log("received message", event.data);
+                const object = JSON.parse(event.data);
+                if (object.type === "handshake") {
+                    handleHandshake(object);
+                }
+
+                if(object.type !== "handshake") {
+                    this.handleNewMessage[type](object, this.id);
+                }
+
             }
             else {
                 if (detectBrowser() === "chrome") {
@@ -130,7 +191,7 @@ export default class ParticipantConnection {
                     this.receiveDataFirefoxFactory(event);
                 }
             }
-        }
+        };
     };
 
 

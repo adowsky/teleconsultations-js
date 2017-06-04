@@ -6,7 +6,7 @@ import ParticipantConnection from "./ParticipantConnection";
 export default class SignalingServer {
     static LOCAL_STREAM = null;
 
-    constructor(onParticipant, onNewMessage) {
+    constructor(onParticipant, onNewMessage, username) {
         this.pcConfig = {
             'iceServers': [{
                 'urls': 'stun:stun.l.google.com:19302'
@@ -14,6 +14,7 @@ export default class SignalingServer {
         };
 
         this.socket = io.connect();
+        this.username = username;
         this.room = "foo";
         this.creator = false;
         this.nextId = 0;
@@ -62,7 +63,8 @@ export default class SignalingServer {
         this.socket.on("message", message => {
             if (message.type === 'got user media') {
                 console.log("got media", message);
-                const client = new ParticipantConnection(message.ownerId, this.sendMessage.bind(this), this.onParticipant.joined, this.onNewMessage);
+                const client = new ParticipantConnection(message.ownerId, this.sendMessage.bind(this), this.onParticipant.joined, this.onNewMessage, this.username);
+
                 client.addStream(SignalingServer.LOCAL_STREAM);
                 client.call();
                 this.clients[message.ownerId] = (client);
@@ -72,7 +74,7 @@ export default class SignalingServer {
                     return; //todo fix resend to self
                 }
                 if (!this.clients[message.ownerId]) {
-                    const client = new ParticipantConnection(message.ownerId, this.sendMessage.bind(this), this.onParticipant.joined, this.onNewMessage);
+                    const client = new ParticipantConnection(message.ownerId, this.sendMessage.bind(this), this.onParticipant.joined, this.onNewMessage,this.username);
                     client.addStream(SignalingServer.LOCAL_STREAM);
                     this.clients[message.ownerId] = (client);
                 }
@@ -105,7 +107,10 @@ export default class SignalingServer {
 
         navigator.mediaDevices.getUserMedia({
             audio: false,
-            video: true
+            video: {
+                width: 250,
+                height: 187.5
+            }
         }).then(stream => {
             if (SignalingServer.LOCAL_STREAM) {
                 return;
